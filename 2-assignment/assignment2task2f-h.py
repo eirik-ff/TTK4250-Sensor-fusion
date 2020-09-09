@@ -187,3 +187,15 @@ ax4.plot([-1, 4], [4, 9], color='C1', label='$x_2 = x_1 + 5$')
 ax4.axis('equal')
 ax4.legend()
 ax4.set_title("Probability above line (2h): {:.1f}\%".format(prob_above_line * 100))
+
+
+#%%
+
+fig5 = plt.figure()
+fig5.axes.append(ax1)
+fig5.axes.append(ax2)
+fig5.axes.append(ax3)
+fig5.axes.append(ax4)
+
+plt.show()
+
