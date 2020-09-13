@@ -20,7 +20,7 @@ plt.close('all')
 try:
     # installed with "pip install SciencePLots" (https://github.com/garrettj403/SciencePlots.git)
     # gives quite nice plots
-    plt_styles = ['science', 'grid', 'bright', 'no-latex']
+    plt_styles = ['science', 'grid', 'bright']
     plt.style.use(plt_styles)
     print(f'pyplot using style set {plt_styles}')
 except Exception as e:
@@ -42,12 +42,12 @@ except Exception as e:
 
 
 # %% get and plot the data
-data_path = 'data_for_ekf.mat'
 
 # TODO: choose this for the last task
 usePregen = True  # choose between own generated data and pre generated
 
 if usePregen:
+    data_path = 'data_for_ekf.mat'
     loadData: dict = scipy.io.loadmat(data_path)
     K: int = int(loadData['K'])  # The number of time steps
     Ts: float = float(loadData['Ts'])  # The sampling time
@@ -61,7 +61,8 @@ else:
     x0 = np.array([0, 0, 1, 1, 0])
     P0 = np.diag([50, 50, 10, 10, np.pi/4]) ** 2
 
-    # model parameters to sample from # TODO for toying around
+    # model parameters to sample from 
+    # TODO for toying around
     sigma_a_true = 0.25
     sigma_omega_true = np.pi/15
     sigma_z_true = 3
@@ -76,13 +77,17 @@ else:
 
 # show ground truth and measurements
 fig, ax = plt.subplots(num=1, clear=True)
-ax.scatter(*Z.T, color='C0', marker='.')
-ax.plot(*Xgt.T[:2], color='C1')
-ax.set_title('Data')
+ax.scatter(*Z.T, s=1.5, color='C0', marker='.', label='Measurement')
+ax.plot(*Xgt.T[:2], color='C1', label='Ground truth')
+ax.set_title('Ground truth and measurements')
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.legend()
 
 # show turn rate
 fig2, ax2 = plt.subplots(num=2, clear=True)
 ax2.plot(Xgt.T[4])
+ax2.set_title('Turn rate')
 ax2.set_xlabel('time step')
 ax2.set_ylabel('turn rate')
 
@@ -90,8 +95,8 @@ ax2.set_ylabel('turn rate')
 # %% a: tune by hand and comment
 
 # set parameters
-sigma_a = 1  # TODO
-sigma_z = 1  # TODO
+sigma_a = 0.25**2  # TODO
+sigma_z = 0.0439  # TODO
 
 # create the model and estimator object
 dynmod = dynamicmodels.WhitenoiseAccelleration(sigma_a)
@@ -100,20 +105,21 @@ ekf_filter = ekf.EKF(dynmod, measmod)
 print(ekf_filter)  # make use of the @dataclass automatic repr
 
 # initialize mean and covariance
-# TODO: ArrayLike (list, np. array, tuple, ...) with 4 elements
-x_bar_init = None
-P_bar_init = None  # TODO: ArrayLike with 4 x 4 elements, hint: np.diag
+# TODO ArrayLike (list, np. array, tuple, ...) with 4 elements
+x_bar_init = np.array([0,0,0,0])
+# TODO ArrayLike with 4 x 4 elements, hint: np.diag
+P_bar_init = np.diag([1,1,1,1])
 init_ekfstate = ekf.GaussParams(x_bar_init, P_bar_init)
 
 # estimate
-# TODO
-# ekfpred_list, ekfupd_list = ekf_filter.estimate_sequence(# TODO fill this)
+ekfpred_list, ekfupd_list = ekf_filter.estimate_sequence(Z, init_ekfstate, Ts,
+                                                         start_with_prediction=True)
 
 # get statistics:
 # TODO: see that you sort of understand what this does
 stats = ekf_filter.performance_stats_sequence(
-    K, Z=Z, ekfpred_list=ekfpred_list, ekfupd_list=ekfupd_list, X_true=Xgt[:, :4],
-    norm_idxs=[[0, 1], [2, 3]], norms=[2, 2]
+    K, Z=Z, ekfpred_list=ekfpred_list, ekfupd_list=ekfupd_list, 
+    X_true=Xgt[:, :4], norm_idxs=[[0, 1], [2, 3]], norms=[2, 2]
 )
 
 print(f'keys in stats is {stats.dtype.names}')
@@ -121,17 +127,18 @@ print(f'keys in stats is {stats.dtype.names}')
 # %% Calculate average performance metrics
 # stats['dists_pred'] contains 2 norm of position and speed for each time index
 # same for 'dists_upd'
-# TODO: square stats['dists_pred'] -> take its mean over time -> take square root
-RMSE_pred = None  # TODO
-RMSE_upd = None  # TODO same for 'dists_upd'
+# square stats['dists_pred'] -> take its mean over time -> take square root
+RMSE_pred = np.sqrt(np.mean(stats['dists_pred']**2, axis=0))
+RMSE_upd = np.sqrt(np.mean(stats['dists_upd']**2, axis=0))
 
 fig3, ax3 = plt.subplots(num=3, clear=True)
 
-ax3.plot(*Xgt.T[:2])
-ax3.plot(*ekfupd_list.mean.T[:2])
+ax3.plot(*Xgt.T[:2], linewidth=2, label='Ground truth')
+ax3.plot(*ekfupd_list.mean.T[:2], '--', linewidth=1.2, label='EKF')
 RMSEs_str = ", ".join(f"{v:.2f}" for v in (*RMSE_pred, *RMSE_upd))
-ax3.set_title(
-    rf'$\sigma_a = {sigma_a}$, $\sigma_z= {sigma_z}$,' + f'\nRMSE(p_p, p_v, u_p, u_v) = ({RMSEs_str})')
+ax3.set_title(rf'$\sigma_a = {sigma_a:.4f}$, $\sigma_z= {sigma_z:.4f}$,' + \
+              f'\nRMSE(p\_p, p\_v, u\_p, u\_v) = ({RMSEs_str})')
+ax3.legend()
 
 # %% Task 5 b and c
 
