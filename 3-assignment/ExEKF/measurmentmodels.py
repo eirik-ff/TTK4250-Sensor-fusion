@@ -34,11 +34,11 @@ class CartesianPosition:
             *,
             sensor_state: Dict[str, Any] = None,
           ) -> np.ndarray:
-        """Calculate the noise free measurement location at x in sensor_state."""
-        # TODO
+        """Calculate the noise free measurement location at x in 
+        sensor_state."""
         # x[0:2] is position
         # you do not need to care about sensor_state
-        return None
+        return x[0:2]
 
     def H(self,
             x: np.ndarray,
@@ -46,11 +46,10 @@ class CartesianPosition:
             sensor_state: Dict[str, Any] = None,
           ) -> np.ndarray:
         """Calculate the measurement Jacobian matrix at x in sensor_state."""
-        # TODO
         # x[0:2] is position
         # you do not need to care about sensor_state
         # if you need the size of the state dimension it is in self.state_dim
-        return None
+        return np.concatenate((np.eye(self.m), np.zeros((self.m,self.m))), axis=1)
 
     def R(self,
             x: np.ndarray,
@@ -58,8 +57,12 @@ class CartesianPosition:
             sensor_state: Dict[str, Any] = None,
             z: np.ndarray = None,
           ) -> np.ndarray:
-        """Calculate the measurement covariance matrix at x in sensor_state having potentially received measurement z."""
-        # TODO
+        """Calculate the measurement covariance matrix at x in sensor_state 
+        having potentially received measurement z."""
         # you do not need to care about sensor_state
-        # sigma is available as self.sigma, and @dataclass makes it available in the init class constructor
-        return None
+        # sigma is available as self.sigma, and @dataclass makes it available 
+        # in the init class constructor
+        return (self.sigma ** 2) * np.eye(self.state_dim)
+
+
+

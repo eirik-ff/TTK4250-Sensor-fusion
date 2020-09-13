@@ -26,7 +26,8 @@ class DynamicModel(Protocol):
 @dataclass
 class WhitenoiseAccelleration:
     """
-    A white noise accelereation model also known as CV, states are position and speed.
+    A white noise accelereation model also known as CV, states are position 
+    and speed.
 
     The model includes the discrete prediction equation f, its Jacobian F, and
     the process noise covariance Q as methods.
@@ -47,16 +48,22 @@ class WhitenoiseAccelleration:
 
         x[:2] is position, x[2:4] is velocity
         """
-        # TODO
-        return None
+        # F_k is the discrete-time transition matrix in the CV model
+        # From (4.64) in the book
+        x_k1 = self.F(x, Ts) @ x
+        return x_k1
 
     def F(self,
             x: np.ndarray,
             Ts: float,
           ) -> np.ndarray:
-        """ Calculate the transition function jacobian for Ts time units at x."""
-        # TODO
-        return None
+        """ Calculate the transition function jacobian for Ts time units at 
+        x."""
+        F_k = np.array([[1, 0, Ts, 0], 
+                        [0, 1, 0,  Ts], 
+                        [0, 0, 1,  0], 
+                        [0, 0, 0,  1]])
+        return F_k
 
     def Q(self,
             x: np.ndarray,
@@ -65,8 +72,19 @@ class WhitenoiseAccelleration:
         """
         Calculate the Ts time units transition Covariance.
         """
-        # TODO
         # Hint: sigma can be found as self.sigma, see variable declarations
-        # Note the @dataclass decorates this class to create an init function that takes
-        # sigma as a parameter, among other things.
-        return None
+        # Note the @dataclass decorates this class to create an init function 
+        # that takes sigma as a parameter, among other things.
+        Q_k = np.array([
+                [Ts**3 / 3, 0, Ts**2 / 2, 0            ],
+                [0,         Ts**3 / 3,    0,  Ts**2 / 2],
+                [Ts**2 / 2, 0,            Ts, 0        ],
+                [0,         T**2 / 2,     0,  Ts       ]
+            ]) * (self.sigma ** 2)
+        return Q_k
+    
+
+
+
+
+
