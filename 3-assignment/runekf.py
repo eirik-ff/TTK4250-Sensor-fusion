@@ -106,10 +106,26 @@ ekf_filter = ekf.EKF(dynmod, measmod)
 print(ekf_filter)  # make use of the @dataclass automatic repr
 
 # initialize mean and covariance
-# TODO ArrayLike (list, np. array, tuple, ...) with 4 elements
 x_bar_init = np.array([0,0,0,0])
-# TODO ArrayLike with 4 x 4 elements, hint: np.diag
-P_bar_init = np.diag([1,1,1,1])*100
+P_bar_init = np.diag([1,1,1,1])*100**2
+
+# initialize mean and covariance based on the two first measurements
+# as derived in task 2
+Kp1 = np.eye(2);
+Kp0 = np.zeros((2,2))
+Ku1 = -1/Ts * np.eye(2)
+Ku0 = 1/Ts * np.eye(2)
+Kx = np.block([[Kp1, Kp0], [Ku1, Ku0]])
+z_init = np.reshape(Z[0:2, :], (4,1))
+x_bar_init = (Kx @ z_init).squeeze()
+
+tmp = np.block([np.eye(2), -Ts*np.eye(2)])
+Q = dynmod.Q(x_bar_init, Ts)
+R = measmod.R(x_bar_init)
+zeros = np.zeros(R.shape)
+P22 = tmp @ Q @ tmp.T + R
+P_bar_init = Kx @ np.block([[R, zeros], [zeros, P22]]) @ Kx.T
+
 init_ekfstate = ekf.GaussParams(x_bar_init, P_bar_init)
 
 # estimate
@@ -144,8 +160,8 @@ ax3.set_ylabel("Y")
 ax3.legend()
 
 
-import sys
-sys.exit(0)
+# import sys
+# sys.exit(0)
 
 # %% Task 5 b and c
 
@@ -153,11 +169,11 @@ sys.exit(0)
 # TODO: pick reasonable values for grid search
 # n_vals = 20
 # is Ok, try lower to begin with for more speed (20*20*1000 = 400 000 KF steps)
-n_vals = 10
+n_vals = 20
 sigma_a_low = 2
-sigma_a_high = 10
+sigma_a_high = 8
 sigma_z_low = 2
-sigma_z_high = 10
+sigma_z_high = 8
 
 # % set the grid on logscale(not mandatory)
 sigma_a_list = np.logspace(
@@ -235,7 +251,7 @@ print("CINEES:", CINEES)
 
 # plot
 fig5 = plt.figure(5, clear=True)
-subplot_layout = (1, 2)
+subplot_layout = (2,1)
 ax5s = [fig5.add_subplot(*subplot_layout, 1, projection='3d'),
         fig5.add_subplot(*subplot_layout, 2, projection='3d')]
 ax5s[0].plot_surface(*np.meshgrid(sigma_a_list, sigma_z_list),
@@ -245,7 +261,7 @@ ax5s[0].contour(*np.meshgrid(sigma_a_list, sigma_z_list),
 ax5s[0].set_xlabel(r'$\sigma_a$', labelpad=-7)
 ax5s[0].set_ylabel(r'$\sigma_z$', labelpad=-7)
 ax5s[0].set_zlabel('ANEES\_pred', labelpad=-7, rotation=90)
-ax5s[0].set_zlim(0, 50)
+ax5s[0].set_zlim(0, 20)
 ax5s[0].view_init(40, 30)
 ax5s[0].tick_params(axis='both', pad=-4)
 ax5s[0].locator_params(nbins=4, integer=True, min_n_ticks=3)
@@ -257,7 +273,7 @@ ax5s[1].contour(*np.meshgrid(sigma_a_list, sigma_z_list),
 ax5s[1].set_xlabel(r'$\sigma_a$', labelpad=-7)
 ax5s[1].set_ylabel(r'$\sigma_z$', labelpad=-7)
 ax5s[1].set_zlabel('ANEES\_upd',  labelpad=-7, rotation=90)
-ax5s[1].set_zlim(0, 50)
+ax5s[1].set_zlim(0, 20)
 ax5s[1].view_init(40, 30)
 ax5s[1].tick_params(axis='both', pad=-4)
 ax5s[1].locator_params(nbins=4, integer=True, min_n_ticks=3)
@@ -267,11 +283,11 @@ fig5.tight_layout(w_pad=5.0)
 # %% see the intersection of NIS and NEESes
 fig6, ax6 = plt.subplots(num=6, clear=True)
 cont_upd = ax6.contour(*np.meshgrid(sigma_a_list, sigma_z_list),
-                       ANEES_upd, CINEES, colors=['C0', 'C1'], labels='ANEESupd')
+                       ANEES_upd, CINEES, colors=['C0', 'C1'])
 cont_pred = ax6.contour(*np.meshgrid(sigma_a_list, sigma_z_list),
-                        ANEES_pred, CINEES, colors=['C2', 'C3'], labels='ANEESpred')
+                        ANEES_pred, CINEES, colors=['C2', 'C3'])
 cont_nis = ax6.contour(*np.meshgrid(sigma_a_list, sigma_z_list),
-                       ANIS, CINIS, colors=['C4', 'C5'], labels='NIS')
+                       ANIS, CINIS, colors=['C4', 'C5'])
 
 for cs, l in zip([cont_upd, cont_pred, cont_nis], ['NEESupd', 'NEESpred', 'NIS']):
     for c, hl in zip(cs.collections, ['low', 'high']):
