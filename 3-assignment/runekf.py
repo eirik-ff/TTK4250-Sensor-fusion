@@ -95,8 +95,8 @@ ax2.set_ylabel('turn rate')
 # %% a: tune by hand and comment
 
 # set parameters
-sigma_a = 5
-sigma_z = 4
+#sigma_a, sigma_z = 5, 4
+sigma_a, sigma_z = 3.1, 2.6
 
 
 # create the model and estimator object
@@ -169,7 +169,7 @@ ax3.legend()
 # TODO: pick reasonable values for grid search
 # n_vals = 20
 # is Ok, try lower to begin with for more speed (20*20*1000 = 400 000 KF steps)
-n_vals = 20
+n_vals = 10
 sigma_a_low = 2
 sigma_a_high = 8
 sigma_z_low = 2
@@ -278,7 +278,7 @@ ax5s[1].view_init(40, 30)
 ax5s[1].tick_params(axis='both', pad=-4)
 ax5s[1].locator_params(nbins=4, integer=True, min_n_ticks=3)
 
-fig5.tight_layout(w_pad=5.0)
+fig5.tight_layout(h_pad=5.0)
 
 # %% see the intersection of NIS and NEESes
 fig6, ax6 = plt.subplots(num=6, clear=True)
