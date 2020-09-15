@@ -61,7 +61,7 @@ else:
     x0 = np.array([0, 0, 1, 1, 0])
     P0 = np.diag([50, 50, 10, 10, np.pi/4]) ** 2
 
-    # model parameters to sample from 
+    # model parameters to sample from
     # TODO for toying around
     sigma_a_true = 0.25
     sigma_omega_true = np.pi/15
@@ -77,8 +77,8 @@ else:
 
 # show ground truth and measurements
 fig, ax = plt.subplots(num=1, clear=True)
-ax.scatter(*Z.T, s=1.5, color='C0', marker='.', label='Measurement')
-ax.plot(*Xgt.T[:2], color='C1', label='Ground truth')
+ax.plot(*Xgt.T[:2], color='k', alpha=0.8, label='Ground truth')
+ax.scatter(*Z.T, s=1.5, color='C1', marker='.', label='Measurement')
 ax.set_title('Ground truth and measurements')
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
@@ -95,8 +95,9 @@ ax2.set_ylabel('turn rate')
 # %% a: tune by hand and comment
 
 # set parameters
-sigma_a = 0.25**2  # TODO
-sigma_z = 0.0439  # TODO
+sigma_a = 5
+sigma_z = 4
+
 
 # create the model and estimator object
 dynmod = dynamicmodels.WhitenoiseAccelleration(sigma_a)
@@ -106,19 +107,19 @@ print(ekf_filter)  # make use of the @dataclass automatic repr
 
 # initialize mean and covariance
 # TODO ArrayLike (list, np. array, tuple, ...) with 4 elements
-x_bar_init = np.array([0,0,1,1])
+x_bar_init = np.array([0,0,0,0])
 # TODO ArrayLike with 4 x 4 elements, hint: np.diag
-P_bar_init = np.diag([1,1,1,1])
+P_bar_init = np.diag([1,1,1,1])*100
 init_ekfstate = ekf.GaussParams(x_bar_init, P_bar_init)
 
 # estimate
 ekfpred_list, ekfupd_list = \
-    ekf_filter.estimate_sequence(Z, init_ekfstate, Ts, start_with_prediction=True)
+    ekf_filter.estimate_sequence(Z, init_ekfstate, Ts)
 
 # get statistics:
 # TODO: see that you sort of understand what this does
 stats = ekf_filter.performance_stats_sequence(
-    K, Z=Z, ekfpred_list=ekfpred_list, ekfupd_list=ekfupd_list, 
+    K, Z=Z, ekfpred_list=ekfpred_list, ekfupd_list=ekfupd_list,
     X_true=Xgt[:, :4], norm_idxs=[[0, 1], [2, 3]], norms=[2, 2]
 )
 
@@ -133,11 +134,13 @@ RMSE_upd = np.sqrt(np.mean(stats['dists_upd']**2, axis=0))
 
 fig3, ax3 = plt.subplots(num=3, clear=True)
 
-ax3.plot(*Xgt.T[:2], linewidth=2, label='Ground truth')
-ax3.plot(*ekfupd_list.mean.T[:2], '--', linewidth=1.2, label='EKF')
+ax3.plot(*Xgt.T[:2], color='k', linewidth=1, label='Ground truth')
+ax3.plot(*ekfupd_list.mean.T[:2], color='g', linewidth=1, label='EKF')
 RMSEs_str = ", ".join(f"{v:.2f}" for v in (*RMSE_pred, *RMSE_upd))
-ax3.set_title(rf'$\sigma_a = {sigma_a:.4f}$, $\sigma_z= {sigma_z:.4f}$,' + \
+ax3.set_title(rf'$\sigma_a = {sigma_a}$, $\sigma_z= {sigma_z}$,' + \
               f'\nRMSE(p\_p, p\_v, u\_p, u\_v) = ({RMSEs_str})')
+ax3.set_xlabel("X")
+ax3.set_ylabel("Y")
 ax3.legend()
 
 
@@ -148,7 +151,7 @@ sys.exit(0)
 
 # % parameters for the parameter grid
 # TODO: pick reasonable values for grid search
-# n_vals = 20  
+# n_vals = 20
 # is Ok, try lower to begin with for more speed (20*20*1000 = 400 000 KF steps)
 n_vals = 10
 sigma_a_low = 2
@@ -178,7 +181,7 @@ for i, sigma_a in enumerate(sigma_a_list):
         ekfpred_list, ekfupd_list = \
             ekf_filter.estimate_sequence(Z, init_ekfstate, Ts)
         stats_array[i, j] = ekf_filter.performance_stats_sequence(
-                K, Z=Z, ekfpred_list=ekfpred_list, ekfupd_list=ekfupd_list, 
+                K, Z=Z, ekfpred_list=ekfpred_list, ekfupd_list=ekfupd_list,
                 X_true=Xgt[:, :4], norm_idxs=[[0, 1], [2, 3]], norms=[2, 2]
             )
 
@@ -194,7 +197,7 @@ ANEES_pred = np.mean(stats_array['NEESpred'], axis=2)
 ANEES_upd = np.mean(stats_array['NEESupd'], axis=2)
 ANIS = np.mean(stats_array['NIS'], axis=2)
 
-     
+
 # %% find confidence regions for NIS and plot
 confprob = 0.95  # number to use for confidence interval, 95% conf int
 # confidence intervall for NIS, hint: scipy.stats.chi2.interval
@@ -202,18 +205,27 @@ CINIS = np.asarray(
     scipy.stats.chi2.interval(confprob, ekf_filter.sensor_model.m*K)) / K
 print("CINIS:", CINIS)
 
+CINIS_gamma = np.asarray(scipy.stats.gamma.interval(confprob, K*2/2) ) / K * 2
+print("CINIS_gamma", CINIS_gamma)
+
 # plot
 fig4 = plt.figure(4, clear=True)
 ax4 = plt.gca(projection='3d')
 ax4.plot_surface(*np.meshgrid(sigma_a_list, sigma_z_list),
                  ANIS, alpha=0.8)
-ax4.contour(*np.meshgrid(sigma_a_list, sigma_z_list),
+CS = ax4.contour(*np.meshgrid(sigma_a_list, sigma_z_list),
             ANIS, [1, 1.5, *CINIS, 2.5, 3], offset=0)  # , extend3d=True, colors='yellow')
-ax4.set_xlabel(r'$\sigma_a$')
-ax4.set_ylabel(r'$\sigma_z$')
-ax4.set_zlabel('ANIS')
+ax4.set_xlabel(r'$\sigma_a$', labelpad=-6)
+ax4.set_ylabel(r'$\sigma_z$', labelpad=-6)
+ax4.set_zlabel('ANIS', labelpad=-6, rotation=90)
 ax4.set_zlim(0, 10)
-ax4.view_init(30, 30)
+ax4.view_init(30, 40)
+ax4.tick_params(axis='both', pad=-4)
+
+CS_legends = ['1', '1.5', f'Low: {CINIS[0]:.2f}', f'High: {CINIS[1]:.2f}', '2.5', '3']
+for i, label in enumerate(CS_legends):
+    CS.collections[i].set_label(label)
+ax4.legend(loc='upper center', ncol=3, prop={'size': 5})
 
 # %% find confidence regions for NEES and plot
 confprob = 0.95
@@ -223,30 +235,34 @@ print("CINEES:", CINEES)
 
 # plot
 fig5 = plt.figure(5, clear=True)
-subplot_layout = (2,1)
+subplot_layout = (1, 2)
 ax5s = [fig5.add_subplot(*subplot_layout, 1, projection='3d'),
         fig5.add_subplot(*subplot_layout, 2, projection='3d')]
 ax5s[0].plot_surface(*np.meshgrid(sigma_a_list, sigma_z_list),
                      ANEES_pred, alpha=0.8)
 ax5s[0].contour(*np.meshgrid(sigma_a_list, sigma_z_list),
                 ANEES_pred, [3, 3.5, *CINEES, 4.5, 5], offset=0)
-ax5s[0].set_xlabel(r'$\sigma_a$')
-ax5s[0].set_ylabel(r'$\sigma_z$')
-ax5s[0].set_zlabel('ANEES\_pred')
+ax5s[0].set_xlabel(r'$\sigma_a$', labelpad=-7)
+ax5s[0].set_ylabel(r'$\sigma_z$', labelpad=-7)
+ax5s[0].set_zlabel('ANEES\_pred', labelpad=-7, rotation=90)
 ax5s[0].set_zlim(0, 50)
 ax5s[0].view_init(40, 30)
+ax5s[0].tick_params(axis='both', pad=-4)
+ax5s[0].locator_params(nbins=4, integer=True, min_n_ticks=3)
 
 ax5s[1].plot_surface(*np.meshgrid(sigma_a_list, sigma_z_list),
                      ANEES_upd, alpha=0.8)
 ax5s[1].contour(*np.meshgrid(sigma_a_list, sigma_z_list),
                 ANEES_upd, [3, 3.5, *CINEES, 4.5, 5], offset=0)
-ax5s[1].set_xlabel(r'$\sigma_a$')
-ax5s[1].set_ylabel(r'$\sigma_z$')
-ax5s[1].set_zlabel('ANEES\_upd')
+ax5s[1].set_xlabel(r'$\sigma_a$', labelpad=-7)
+ax5s[1].set_ylabel(r'$\sigma_z$', labelpad=-7)
+ax5s[1].set_zlabel('ANEES\_upd',  labelpad=-7, rotation=90)
 ax5s[1].set_zlim(0, 50)
 ax5s[1].view_init(40, 30)
+ax5s[1].tick_params(axis='both', pad=-4)
+ax5s[1].locator_params(nbins=4, integer=True, min_n_ticks=3)
 
-fig5.tight_layout(h_pad=5.0)
+fig5.tight_layout(w_pad=5.0)
 
 # %% see the intersection of NIS and NEESes
 fig6, ax6 = plt.subplots(num=6, clear=True)

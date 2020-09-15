@@ -1,7 +1,7 @@
 """
 Notation:
 ----------
-x is generally used for either the state or the mean of a gaussian. It should 
+x is generally used for either the state or the mean of a gaussian. It should
   be clear from context which it is.
 P is used about the state covariance
 z is a single measurement
@@ -51,10 +51,10 @@ class EKF:
         x, P = ekfstate  # tuple unpacking
         F = self.dynamic_model.F(x, Ts)
         Q = self.dynamic_model.Q(x, Ts)
-        
+
         x_pred = self.dynamic_model.f(x, Ts)
         P_pred = F @ P @ F.T + Q
-        
+
         state_pred = GaussParams(x_pred, P_pred)
         return state_pred
 
@@ -69,7 +69,7 @@ class EKF:
 
         x = ekfstate.mean
         zbar = self.sensor_model.h(x)
-        
+
         v = z - zbar
         return v
 
@@ -79,7 +79,7 @@ class EKF:
                        *,
                        sensor_state: Dict[str, Any] = None,
                        ) -> np.ndarray:
-        """Calculate the innovation covariance for ekfstate at z in 
+        """Calculate the innovation covariance for ekfstate at z in
         sensorstate."""
 
         x, P = ekfstate
@@ -114,7 +114,7 @@ class EKF:
         v, S = self.innovation(z, ekfstate, sensor_state=sensor_state)
         H = self.sensor_model.H(x, sensor_state=sensor_state)
 
-        # linalg.solve solves AX = B for X. We want W from W = P H.T Sinv 
+        # linalg.solve solves AX = B for X. We want W from W = P H.T Sinv
         # without evaluating Sinv, so we post-multiply with Sinv to get
         # W S = P H.T. Then, transpose to get S.T W.T = H P (P = P.T), and now
         # we have an equation on the form suitable for linalg.solve where
@@ -136,7 +136,7 @@ class EKF:
              *,
              sensor_state: Dict[str, Any] = None,
              ) -> GaussParams:
-        """Predict ekfstate Ts units ahead and then update this prediction 
+        """Predict ekfstate Ts units ahead and then update this prediction
         with z in sensor_state."""
 
         ekfstate_pred = self.predict(ekfstate, Ts)
@@ -149,7 +149,7 @@ class EKF:
             *,
             sensor_state: Dict[str, Any] = None,
             ) -> float:
-        """Calculate the normalized innovation squared for ekfstate at z in 
+        """Calculate the normalized innovation squared for ekfstate at z in
         sensor_state"""
 
         v, S = self.innovation(z, ekfstate, sensor_state=sensor_state)
@@ -163,13 +163,13 @@ class EKF:
              # The true state to comapare against
              x_true: np.ndarray,
              ) -> float:
-        """Calculate the normalized etimation error squared from ekfstate to 
+        """Calculate the normalized etimation error squared from ekfstate to
         x_true."""
 
         x, P = ekfstate
 
         x_diff = x - x_true
-        
+
         NEES = x_diff.T @ np.linalg.solve(P, x_diff)
         return NEES
 
@@ -180,7 +180,7 @@ class EKF:
              sensor_state: Dict[str, Any],
              gate_size_square: float,
              ) -> bool:
-        """ Check if z is inside sqrt(gate_sized_squared)-sigma ellipse of 
+        """ Check if z is inside sqrt(gate_sized_squared)-sigma ellipse of
         ekfstate in sensor_state """
 
         # a function to be used in PDA and IMM-PDA
@@ -204,7 +204,7 @@ class EKF:
 
     @classmethod
     def estimate(cls, ekfstate: GaussParams):
-        """Get the estimate from the state with its covariance. 
+        """Get the estimate from the state with its covariance.
         (Compatibility method)"""
         # dummy function for compatibility with IMM class
         return ekfstate
@@ -213,19 +213,19 @@ class EKF:
             self,
             # A sequence of measurements
             Z: Sequence[np.ndarray],
-            # the initial KF state to use for either prediction or update (see 
+            # the initial KF state to use for either prediction or update (see
             # start_with_prediction)
             init_ekfstate: GaussParams,
-            # Time difference between Z's. If start_with_prediction: also diff 
+            # Time difference between Z's. If start_with_prediction: also diff
             # before the first Z
             Ts: Union[float, Sequence[float]],
             *,
             # An optional sequence of the sensor states for when Z was recorded
             sensor_state: Optional[Iterable[Optional[Dict[str, Any]]]] = None,
-            # sets if Ts should be used for predicting before the first 
+            # sets if Ts should be used for predicting before the first
             # measurement in Z
             start_with_prediction: bool = False,
-    ) -> Tuple[GaussParamList, GaussParamList]:
+            ) -> Tuple[GaussParamList, GaussParamList]:
         """Create estimates for the whole time series of measurements."""
 
         # sequence length
@@ -249,7 +249,7 @@ class EKF:
         ekfupd_list = GaussParamList.allocate(K, n)
 
         # perform the actual predict and update cycle
-        # loop over the data and get both the predicted and updated 
+        # loop over the data and get both the predicted and updated
         # states in the lists
         # the predicted is good to have for evaluation purposes
         # A potential pythonic way of looping through  the data
@@ -257,7 +257,7 @@ class EKF:
              ekfpred = self.predict(ekfupd, Tsk)
              ekfupd = self.update(zk, ekfpred)
              ekfpred_list[k] = ekfpred
-             ekfupd_list[k] = ekfupd             
+             ekfupd_list[k] = ekfupd
 
         return ekfpred_list, ekfupd_list
 
@@ -269,13 +269,13 @@ class EKF:
             ekfstate_upd: Optional[GaussParams] = None,
             sensor_state: Optional[Dict[str, Any]] = None,
             x_true: Optional[np.ndarray] = None,
-            # None: no norm, -1: all idx, seq: a single norm for given idxs, 
+            # None: no norm, -1: all idx, seq: a single norm for given idxs,
             # seqseq: a norms for idxseq
             norm_idxs: Optional[Iterable[Sequence[int]]] = None,
-            # The sequence of norms to calculate for idxs, see np.linalg.norm 
+            # The sequence of norms to calculate for idxs, see np.linalg.norm
             # ord argument.
             norms: Union[Iterable[int], int] = 2,
-    ) -> Dict[str, Union[float, List[float]]]:
+            ) -> Dict[str, Union[float, List[float]]]:
         """Calculate performance statistics available from the given parameters."""
         stats: Dict[str, Union[float, List[float]]] = {}
 
