@@ -17,6 +17,10 @@ T = TypeVar("T")
 
 @dataclass
 class MixtureParameters(Generic[T]):
+    """
+    weights: mixing probabilities, found using e.g. (6.27)
+    components: list of GaussParams, i.e. mean and covariance for each mode
+    """
     __slots__ = ["weights", "components"]
     weights: np.ndarray
     components: Sequence[T]
