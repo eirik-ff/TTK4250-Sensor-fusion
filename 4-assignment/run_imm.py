@@ -152,7 +152,7 @@ for axu, axl, u_s, rmse_pred, rmse_upd in zip(
     # ax.scatter(*Z.T)
     axu.plot(*u_s.mean.T[:2])
     rmsestr = ", ".join(f"{num:.3f}" for num in (*rmse_upd, *rmse_pred))
-    axu.set_title(f"RMSE(p_u, v_u, p_pr, v_pr)|\n{rmsestr}|")
+    #axu.set_title(f"RMSE(p_u, v_u, p_pr, v_pr)|\n{rmsestr}|")
     axu.axis("equal")
     axl.plot(np.arange(K) * Ts, u_s.mean.T[4])
     axl.plot(np.arange(K) * Ts, Xgt[:, 4])
@@ -199,7 +199,7 @@ init_state = { # TODO
 }
 
 
-imm_preds, imm_upds, imm_ests = # TODO: perform estimate
+imm_preds, imm_upds, imm_ests = imm_filter.estimate_sequence(Z, init_state, Ts)
 
 # extract some data
 x_est = np.array([est.mean for est in imm_ests])

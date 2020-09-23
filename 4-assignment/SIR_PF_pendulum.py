@@ -3,7 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
 
-rng = np.random.default_rng(0)
+rng = np.random.default_rng()
+
+try:
+    # installed with "pip install SciencePLots" (https://github.com/garrettj403/SciencePlots.git)
+    # gives quite nice plots
+    plt_styles = ["science", "grid", "ieee", "bright", "no-latex"]
+    plt.style.use(plt_styles)
+    print(f"pyplot using style set {plt_styles}")
+except Exception as e:
+    pass
+
 # %% trajectory generation
 # scenario parameters
 x0 = np.array([np.pi / 2, -np.pi / 100])
@@ -60,7 +70,7 @@ axs1[1].set_ylabel(r"$\dot \theta$")
 
 # constants
 Ld = 4
-Ll = 0
+Ll = 4
 r = 0.25
 
 # noise pdf
@@ -89,7 +99,7 @@ ax2.set_ylabel("z")
 # %% Task: Estimate using a particle filter
 
 # number of particles to use
-N = 2000
+N = 500
 
 # initialize particles, pretend you do not know where the pendulum starts
 px = np.array([
@@ -123,38 +133,49 @@ ax4.set_ylabel("y")
 ax4.set_title("theta mapped to x-y")
 ax4.legend()
 
-particle_out = np.zeros((K,2))
 
 #%% PF iterate
+particle_out = np.zeros((K,2))
 eps = np.finfo(float).eps
 for k in range(K):  # time step
-    print(f"k = {k}")
+    print(f"k = {k}", end="\t\t")
 
     # weight update
     # update weights using (5.39)
     for n in range(N):  # weight for particle n
         # Using (5.39) to perform weight update
         dz = Z[k] - h(px[n], Ld, l, Ll)
-        w[n] = PF_measurement_distribution.pdf(dz)
+        w[n] *= PF_measurement_distribution.pdf(dz)
+        # only have the recursive version of the formula here if resetting
+        # the weights in the resample routine. If will fail if this is not
+        # done.
     w = w + eps  # avoid round-off error
     w = w / np.sum(w) # normalize
 
     N_eff = 1 / np.sum(w**2)
     print(f"N_eff = {N_eff}")
 
-    # resample using algorithm 3 p. 90
-    cumweights = np.cumsum(w)  # staircase cdf
-    noise = rng.random((1,1)) / N
-    i = 0
-    for n in range(N):
-        u = n / N + noise
-        while u > cumweights[i]:
-            i += 1
-        pxn[n] = px[i]  # resampled particles, instead of indicesout
-    rng.shuffle(pxn, axis=0)  # shuffle to maximize randomness
-    # resetting all weights to 1/N is redundant here, but I keep it in for
-    # later reference since it's not mentioned in the book.
-    w.fill(1 / N)
+    always_resample = True
+    if N_eff <= N/2 or always_resample:
+        # resample using algorithm 3 p. 90
+        cumweights = np.cumsum(w)  # staircase cdf
+        noise = rng.random((1,1)) / N
+        indicesout = np.zeros(N, dtype=int)
+        i = 0
+        for n in range(N):
+            u = n / N + noise
+            while u > cumweights[i]:
+                i += 1
+            pxn[n] = px[i]  # resampled particles, instead of indicesout
+        rng.shuffle(pxn, axis=0)  # shuffle to maximize randomness
+        # important to reset all the weights to 1/N after resampling since
+        # we don't know which weights to trust more after resampling. However,
+        # we can actually assign the new particle the weight of the particle
+        # it is sampled from, and normalize after, and this is an alternative
+        # to what is done here.
+        w.fill(1 / N)
+    else:
+        pxn = px.copy()
 
     # trajecory sample prediction
     # propose new particles using (5.38)
@@ -179,8 +200,6 @@ for k in range(K):  # time step
         plt.show(block=False)
         plt.waitforbuttonpress(plotpause)
 
-if show_plot:
-    plt.waitforbuttonpress()
 # %% plot particle centroid path
 fig5, ax5 = plt.subplots(num=5, clear=True)
 ax5.plot(particle_out[:,0], label='Particle theta mean')
