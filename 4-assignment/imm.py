@@ -202,7 +202,7 @@ class IMM(Generic[MT]):
         # (6.33)
         predicted_mode_probabilities = immstate.weights # shape (M,1)
         normalization = \
-            np.sum(mode_loglikelihood * predicted_mode_probabilities) # scalar float
+            np.sum(np.exp(mode_loglikelihood) * predicted_mode_probabilities) # scalar float
 
         log_pred_mode_probs = np.log(predicted_mode_probabilities) # shape (M,1)
         log_norm = np.log(normalization) # scalar float
@@ -245,7 +245,7 @@ class IMM(Generic[MT]):
         in sensor_state"""
 
         predicted_immstate = self.predict(immstate, Ts)
-        updated_immstate = self.update(z, immstate, sensor_state)
+        updated_immstate = self.update(z, predicted_immstate, sensor_state)
 
         return updated_immstate
 

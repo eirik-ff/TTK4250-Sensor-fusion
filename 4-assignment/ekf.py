@@ -292,7 +292,7 @@ class EKF:
         if x_true is not None:
             # prediction
             if ekfstate_pred is not None:
-                stats['NEESpred'] = self.NEES(ekfstate_pred, x_true)
+                #stats['NEESpred'] = self.NEES(ekfstate_pred, x_true)
 
                 # distances
                 err_pred = ekfstate_pred.mean - x_true
@@ -305,7 +305,7 @@ class EKF:
 
             # update
             if ekfstate_upd is not None:
-                stats['NEESupd'] = self.NEES(ekfstate_upd, x_true)
+                #stats['NEESupd'] = self.NEES(ekfstate_upd, x_true)
 
                 # distances
                 err_upd = ekfstate_upd.mean - x_true

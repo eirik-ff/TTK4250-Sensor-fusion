@@ -11,6 +11,8 @@ import dynamicmodels
 import measurementmodels
 import imm
 import ekf
+import gaussparams
+import mixturedata
 
 # %% plot config check and style setup
 
@@ -24,7 +26,7 @@ plt.close("all")
 try:
     # installed with "pip install SciencePLots" (https://github.com/garrettj403/SciencePlots.git)
     # gives quite nice plots
-    plt_styles = ["science", "grid", "bright", "no-latex"]
+    plt_styles = ["science", "grid", "ieee", "bright", "no-latex"]
     plt.style.use(plt_styles)
     print(f"pyplot using style set {plt_styles}")
 except Exception as e:
@@ -78,10 +80,20 @@ ax1.scatter(*Z.T[:2])
 # TODO
 sigma_z = 1
 sigma_a_CT = 1
+sigma_a_CV = 1
 sigma_omega = 1
 
 # TODO
-init_state = {"mean": [None], "cov": np.diag([None]) ** 2}
+#init_state = {"mean": [None], "cov": np.diag([None]) ** 2}
+
+init_mean = np.array([0,0,0,0,0])
+init_cov = np.diag([1,1,1,1,1]) * 100**2
+num_modes = 2
+# code below copied from blackboard
+init_modes = gaussparams.GaussParams(init_mean, init_cov) # init_mean has shape (5,) and init_cov has shape (5, 5) #
+a = 0.5
+init_mode_probabilities = np.array([a, 1-a]) # a in [0,1]
+init_state = mixturedata.MixtureParameters(init_mode_probabilities, [init_modes] * num_modes) # can also be a list of different GaussParams per mode.
 
 measurement_model = measurementmodels.CartesianPosition(
     sigma_z, state_dim=5
@@ -92,13 +104,13 @@ CT = dynamicmodels.ConstantTurnrate(sigma_a_CT, sigma_omega)
 # make models
 filters = []
 filters.append(ekf.EKF(CV, measurement_model))
-filters.append(None) # TODO, so you understand what is going on here
+filters.append(ekf.EKF(CT, measurement_model))
 
 pred = []
 upd = []
 stats = []
 for ekf_filter in filters:
-    ekfpred_list, ekfupd_list = # TODO
+    ekfpred_list, ekfupd_list = ekf_filter.estimate_sequence(Z, init_modes, Ts)
     stats.append(
         ekf_filter.performance_stats_sequence(
             K=K,
@@ -106,7 +118,7 @@ for ekf_filter in filters:
             ekfpred_list=ekfpred_list,
             ekfupd_list=ekfupd_list,
             X_true=Xgt,
-            NEES_idx=ekf_filter.dynamic_model._all_idx,  # HACK?
+            #NEES_idx=ekf_filter.dynamic_model._all_idx,  # HACK?
             norm_idxs=[[0, 1], [2, 3]],
             norms=[2, 2],
         )
@@ -125,10 +137,11 @@ RMSE_upd = np.sqrt((err_upd ** 2).mean(axis=1)) # same as above
 
 # measurement consistency
 NIS = np.array([st["NIS"] for st in stats])
-ANIS = # TODO, hint mean
-CINIS = # TODO, hint scipy.stats.chi2.interval
-CIANIS = # TODO, hint [...].inteval
-print(f"ANIS={ANIS} with CIANIS={CIANIS}")
+ANIS = np.mean(NIS, axis=1) # TODO, hint mean
+# CINIS = # TODO, hint scipy.stats.chi2.interval
+# CIANIS = # TODO, hint [...].inteval
+# print(f"ANIS={ANIS} with CIANIS={CIANIS}")
+print(f"ANIS={ANIS}")
 
 
 # plot
@@ -166,7 +179,7 @@ sigma_z = 1
 sigma_a_CV = 1
 sigma_a_CT = 1
 sigma_omega = 1
-PI = np.array([[1, 0], [0, 1]])  # TODO
+PI = np.array([[0.95, 0.05], [0.05, 0.95]])  # TODO
 # Optional sanity check
 assert np.allclose(PI.sum(axis=1), 1), "rows of PI must sum to 1" # RIGHT?? yes...
 
