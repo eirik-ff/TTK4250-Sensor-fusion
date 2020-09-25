@@ -161,7 +161,6 @@ class EKF:
 
         v, S = self.innovation(z, ekfstate, sensor_state=sensor_state)
 
-        print(S)
         cholS = la.cholesky(S, lower=True)
 
         invcholS_v = la.solve_triangular(cholS, v, lower=True)
