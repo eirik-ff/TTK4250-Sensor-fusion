@@ -22,8 +22,13 @@ def gaussian_mixture_moments(
     # this implements (6.21), although probably more inefficient than using
     # np.average. However, the way mean_diff is calculated, it's shape doesn't
     # play too nice with the average routine.
-    cov_ext = mean_diff.T @ np.diag(w) @ mean_diff
+    # cov_ext = mean_diff.T @ np.diag(w) @ mean_diff
     # shapes:    (n, N)   @   (N, N)   @  (N, n)  = (n, n)
+    N, n = mean.shape
+    cov_ext = np.zeros((n,n))
+    for i in range(N):
+        mean_diff = mean[i, :] - mean_bar
+        cov_ext += (cov[i, :, :] + mean_diff @ mean_diff.T) * w[i]
 
     # # total covariance
     cov_bar = cov_int + cov_ext
