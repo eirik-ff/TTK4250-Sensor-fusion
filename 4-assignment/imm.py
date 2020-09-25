@@ -196,23 +196,19 @@ class IMM(Generic[MT]):
         sensor_state. This implements (6.33)."""
 
         # (6.32), shape = (M,1)
+        # Lambda_k^{s_k}
         mode_loglikelihood = np.array(
             [filt.loglikelihood(z, comp, sensor_state) \
              for filt, comp in zip(self.filters, immstate.components)])
 
         # (6.33)
-        predicted_mode_probabilities = immstate.weights # shape (M,1)
-        normalization = \
-            np.sum(np.exp(mode_loglikelihood) * predicted_mode_probabilities) # scalar float
+        predicted_mode_probabilities = immstate.weights
+        supdprob = mode_loglikelihood + np.log(predicted_mode_probabilities)
+        log_norm = logsumexp(supdprob)
 
-        log_pred_mode_probs = np.log(predicted_mode_probabilities) # shape (M,1)
-        log_norm = np.log(normalization) # scalar float
         # (6.33)
-        # mode_loglikelihood * predicted_mode_probabilities / normalization
-        log_updated_mode_probs = \
-            mode_loglikelihood + log_pred_mode_probs - log_norm
-
-        updated_mode_probabilities = np.exp(log_updated_mode_probs) # shape (M,1)
+        log_updated_mode_probs = supdprob - log_norm
+        updated_mode_probabilities = np.exp(log_updated_mode_probs)
 
         # Optional debuging
         assert np.all(np.isfinite(updated_mode_probabilities))
