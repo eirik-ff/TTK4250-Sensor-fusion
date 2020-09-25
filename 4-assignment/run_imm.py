@@ -81,10 +81,15 @@ ax1.legend()
 # %% tune single filters
 
 # parameters
+## for measure model
 sigma_z = 3
-sigma_a_CV = 0.3
-sigma_a_CT = 0.1
-sigma_omega = 0.002 * np.pi
+
+## for CV model
+sigma_a_CV = 0.17
+
+## for CT model
+sigma_a_CT = 0.17
+sigma_omega = 0.0001 * np.pi
 
 # initial values
 init_mean = np.array([0, 0, 2, 0, 0])
@@ -166,7 +171,7 @@ CIANIS = np.array(scipy.stats.chi2.interval(0.9, K * 2)) / K
 print(f"ANIS={ANIS} with CIANIS={CIANIS}")
 
 
-#%% plot individual estimates
+# plot individual estimates
 fig2, axs2 = plt.subplots(2, 2, num=2, clear=True)
 for axu, axl, u_s, rmse_pred, rmse_upd in zip(
     axs2[0], axs2[1], upd, RMSE_pred, RMSE_upd
@@ -190,23 +195,27 @@ axs2[0, 0].legend(['CV'])
 axs2[0, 1].legend(['CT'])
 fig2.tight_layout(w_pad=0.5, h_pad=1.0)
 
-#%% plot errors
+# plot errors
 fig3, axs3 = plt.subplots(1, 3, num=3, clear=True)
 fig3.subplots_adjust(wspace=0.4)
 
-axs3[0].plot(np.arange(K) * Ts, NIS[0])
-axs3[0].plot(np.arange(K) * Ts, NIS[1])
+axs3[0].plot(np.arange(K) * Ts, NIS[0], label='CV')
+axs3[0].plot(np.arange(K) * Ts, NIS[1], label='CT')
+for ci, anis, lab in zip(CIANIS, ANIS, ['CV', 'CT']):
+    axs3[0].plot(np.arange(K) * Ts, ci * np.ones((K,)), '--r', label=f'CI_{lab}')
+    axs3[0].plot(np.arange(K) * Ts, anis * np.ones((K,)), '--g', label=f"ANIS_{lab}")
 axs3[0].set_title("NIS")
 axs3[0].set_xlabel('Time step')
+axs3[0].legend(fontsize=6, bbox_to_anchor=(-0.3,1))
 
 axs3[1].plot(np.arange(K) * Ts, err_upd[:, 0].T)
 # axs3[1].plot(np.arange(K) * Ts, err_upd[1, :, 0])
-axs3[1].set_title("pos error")
+axs3[1].set_title("pos error (gt)")
 axs3[1].set_xlabel('Time step')
 
 axs3[2].plot(np.arange(K) * Ts, err_upd[:, 1].T)
 # axs3[2].plot(np.arange(K) * Ts, err_upd[1, :, 1])
-axs3[2].set_title("vel error")
+axs3[2].set_title("vel error (gt)")
 axs3[2].set_xlabel('Time step')
 
 # %% tune IMM by only looking at the measurements
