@@ -14,6 +14,11 @@ import imm
 import ekf
 import estimationstatistics as estats
 
+# the given code gives warnings due to division by zero, which is handled.
+# the below lines will mute these warnings
+import warnings
+warnings.filterwarnings("ignore")
+
 
 # %% plot config check and style setup
 
