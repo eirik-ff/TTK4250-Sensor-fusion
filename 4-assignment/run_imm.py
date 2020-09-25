@@ -195,6 +195,23 @@ axs2[0, 0].legend(['CV'])
 axs2[0, 1].legend(['CT'])
 fig2.tight_layout(w_pad=0.5, h_pad=1.0)
 
+
+# plot predicted vs ground truth
+fig7, axs7 = plt.subplots(1, 2, num=7, clear=True)
+fig7.suptitle("Model predictions vs ground truth")
+
+axs7[0].plot(*Xgt.T[:2], label="Ground truth")
+x_CV = np.array([data.mean for data in upd[0]])
+axs7[0].plot(*x_CV.T[:2], '--r', label="CV model")
+axs7[0].legend(fontsize=6)
+
+axs7[1].plot(*Xgt.T[:2], label="Ground truth")
+x_CT = np.array([data.mean for data in upd[1]])
+axs7[1].plot(*x_CT.T[:2], '--r', label="CT model")
+axs7[1].legend(fontsize=6)
+
+
+
 # plot errors
 fig3, axs3 = plt.subplots(1, 3, num=3, clear=True)
 fig3.subplots_adjust(wspace=0.4)
@@ -219,10 +236,10 @@ axs3[2].set_title("vel error (gt)")
 axs3[2].set_xlabel('Time step')
 
 # %% tune IMM by only looking at the measurements
-sigma_z = 3
-sigma_a_CV = 0.2
-sigma_a_CT = 0.1
-sigma_omega = 0.002 * np.pi
+sigma_z = 1.5
+sigma_a_CV = 0.1
+sigma_a_CT = 0.3
+sigma_omega = 0.0001 * np.pi
 PI = np.array([[0.95, 0.05], [0.05, 0.95]])
 assert np.allclose(PI.sum(axis=1), 1), "rows of PI must sum to 1"
 
@@ -237,9 +254,8 @@ imm_filter = imm.IMM(ekf_filters, PI)
 
 init_weights = np.array([0.5] * 2)
 init_mean = [0] * 5
-init_cov = np.diag(
-    [1] * 5
-)  # HAVE TO BE DIFFERENT: use intuition, eg. diag guessed distance to true values squared.
+# HAVE TO BE DIFFERENT: use intuition, eg. diag guessed distance to true values squared.
+init_cov = np.diag([1, 1, 1, 1, 1])*100
 init_mode_states = [GaussParams(init_mean, init_cov)] * 2  # copy of the two modes
 init_immstate = MixtureParameters(init_weights, init_mode_states)
 
@@ -268,7 +284,7 @@ CINIS = np.array(scipy.stats.chi2.interval(0.9, 2))
 CIANIS = np.array(scipy.stats.chi2.interval(0.9, 2 * K)) / K
 print(f"ANIS={ANIS} with CIANIS={CIANIS}")
 
-#%% plot imm
+# plot imm
 fig4, axs4 = plt.subplots(2, 2, num=4, clear=True)
 
 axs4[0, 0].plot(*x_est.T[:2], label="est", color="C0")
@@ -289,13 +305,21 @@ CI_LABELS = ["CI0", "CI1"]
 for ci, cilbl in zip(CINIS, CI_LABELS):
     axs4[1, 1].plot([1, K * Ts], np.ones(2) * ci, "--r", label=cilbl)
 axs4[1, 1].text(K * Ts * 1.1, 1, f"{ratio_in_CI} inside CI", rotation=90)
-axs4[1, 1].legend(fontsize=6)
+axs4[1, 1].legend(fontsize=4)
 
 fig4.subplots_adjust(wspace=0.25, hspace=0.4)
 
+# plot predicted vs ground truth
+fig8, ax8 = plt.subplots(1, num=8, clear=True)
+fig8.suptitle("IMM predictions vs ground truth")
+
+ax8.plot(*Xgt.T[:2], label="Ground truth")
+ax8.plot(*x_est.T[:2], '--r', label="IMM model")
+ax8.legend(fontsize=6)
+
 # %% tune IMM by looking at ground truth
-sigma_z = 3
-sigma_a_CV = 0.2
+sigma_z = 1.5
+sigma_a_CV = 0.4
 sigma_a_CT = 0.1
 sigma_omega = 0.002 * np.pi
 PI = np.array([[0.95, 0.05], [0.05, 0.95]])
@@ -312,9 +336,8 @@ imm_filter = imm.IMM(ekf_filters, PI)
 
 init_weights = np.array([0.5] * 2)
 init_mean = [0] * 5
-init_cov = np.diag(
-    [1] * 5
-)  # HAVE TO BE DIFFERENT: use intuition, eg. diag guessed distance to true values squared.
+# HAVE TO BE DIFFERENT: use intuition, eg. diag guessed distance to true values squared.
+init_cov = np.diag([1, 1, 1, 1, 0.0001])*100**2
 init_mode_states = [GaussParams(init_mean, init_cov)] * 2  # copy of the two modes
 init_immstate = MixtureParameters(init_weights, init_mode_states)
 
@@ -403,14 +426,14 @@ devstr = ", ".join(f"{num:.3f}" for num in (pos_peak_deviation, vel_peak_deviati
 fig5, axs5 = plt.subplots(2, 2, num=5, clear=True)
 axs5[0, 0].plot(*x_hat.T[:2], label="est", color="C0")
 axs5[0, 0].scatter(*Z.T, label="z", color="C1")
-axs5[0, 0].legend()
+axs5[0, 0].legend(fontsize=8)
 axs5[0, 0].set_title(f"RMSE(p, v) = {rmsestr}\npeak_dev(p, v) = {devstr}.0")
 axs5[0, 1].plot(np.arange(K) * Ts, x_hat[:, 4], label=r"$\hat{\omega}$")
-axs5[0, 1].plot(np.arange(K) * Ts, Xgt[:, 4], label=r"$\omega$")
-axs5[0, 1].legend()
+axs5[0, 1].plot(np.arange(K) * Ts, Xgt[:, 4], label=r"$\omega_{gt}$")
+axs5[0, 1].legend(fontsize=8)
 for s in range(len(ekf_filters)):
-    axs5[1, 0].plot(np.arange(K) * Ts, prob_est[:, s], label=rf"$Pr(s={s})$")
-axs5[1, 0].legend()
+    axs5[1, 0].plot(np.arange(K) * Ts, prob_est[:, s], label=rf"$Pr({['CV','CT'][s]})$")
+axs5[1, 0].legend(fontsize=4)
 axs5[1, 1].plot(np.arange(K) * Ts, NIS, label="NIS")
 axs5[1, 1].plot(np.arange(K) * Ts, NISes)
 
@@ -419,7 +442,7 @@ CI_LABELS = ["CI0", "CI1"]
 for ci, cilbl in zip(CINIS, CI_LABELS):
     axs5[1, 1].plot([1, K * Ts], np.ones(2) * ci, "--r", label=cilbl)
 axs5[1, 1].text(K * Ts * 1.1, 1, f"{ratio_in_CI} inside CI", rotation=90)
-axs5[1, 1].legend()
+axs5[1, 1].legend(fontsize=6)
 
 fig6, axs6 = plt.subplots(2, 2, sharex=True, num=6, clear=True)
 axs6[0, 0].plot(np.arange(K) * Ts, pos_err)
@@ -447,6 +470,16 @@ axs6[1, 1].set_ylabel(f"NEES: {ratio_in_CI_nees}% in CI")
 axs6[1, 1].plot([0, Ts * (K - 1)], np.repeat(CINEES[None], 2, 0), "r--")
 axs6[1, 1].set_ylim([0, 2 * CINEES[1]])
 # axs6[1, 1].text(K * Ts * 1.1, -2, f"{ratio_in_CI_nees}% inside CI", rotation=90)
+
+
+# plot predicted vs ground truth
+fig9, ax9 = plt.subplots(1, num=9, clear=True)
+fig9.suptitle("IMM predictions vs ground truth")
+
+ax9.plot(*Xgt.T[:2], label="Ground truth")
+ax9.plot(*x_hat.T[:2], '--r', label="IMM model")
+ax9.legend(fontsize=10)
+
 
 # %%
 

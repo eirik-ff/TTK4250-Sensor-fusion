@@ -115,7 +115,10 @@ class EKF:
         return innovationstate
 
     def update(
-        self, z: np.ndarray, ekfstate: GaussParams, sensor_state: Dict[str, Any] = None
+        self,
+        z: np.ndarray,
+        ekfstate: GaussParams,
+        sensor_state: Dict[str, Any] = None
     ) -> GaussParams:
         """Update ekfstate with z in sensor_state"""
 
