@@ -119,6 +119,7 @@ class IMM(Generic[MT]):
         for mix_weights in mix_probabilities:
             mean, cov = mixturereduction.gaussian_mixture_moments(
                 mix_weights, means, covs)
+            mixed_states.append(GaussParams(mean, cov))
 
         return np.array(mixed_states)
 
