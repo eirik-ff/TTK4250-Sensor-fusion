@@ -40,7 +40,7 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         # comprehension or map
         gated = np.array([
             self.state_filter.gate(z.reshape((-1,1)), filter_state,
-                gate_size_square=self.gate_size,
+                gate_size_square=g_squared,
                 sensor_state=sensor_state).reshape((-1,1)) for z in Z])
 
         return gated
@@ -139,16 +139,16 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         Zg = Z[gated]
 
         # find association probabilities
-        beta = self.association_probabilities(Z, filter_state,
+        beta = self.association_probabilities(Zg, filter_state,
                                               sensor_state=sensor_state)
 
         # find the mixture components
         filter_state_updated_mixture_components = \
-            self.conditional_update(Z, filter_state, sensor_state=sensor_state)
+            self.conditional_update(Zg, filter_state, sensor_state=sensor_state)
 
         # make mixture
         filter_state_update_mixture = MixtureParameters(
-            beta, filter_state_update_mixture_components
+            beta, filter_state_updated_mixture_components
         )
 
         # reduce mixture
