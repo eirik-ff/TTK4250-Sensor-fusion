@@ -176,6 +176,39 @@ class EKF:
         return NIS
 
     @classmethod
+    def NEES(cls,
+             ekfstate: GaussParams,
+             # The true state to comapare against
+             x_true: np.ndarray,
+             ) -> float:
+        """Calculate the normalized etimation error squared from ekfstate to
+        x_true."""
+
+        x, P = ekfstate
+
+        x_diff = x - x_true
+
+        NEES = x_diff.T @ np.linalg.solve(P, x_diff)
+        return NEES
+
+    def gate(self,
+             z: np.ndarray,
+             ekfstate: GaussParams,
+             *,
+             sensor_state: Dict[str, Any],
+             gate_size_square: float,
+             ) -> bool:
+        """Check if z is inside sqrt(gate_sized_squared)-sigma ellipse of
+        ekfstate in sensor_state """
+
+        z_hat, S = ekfstate
+
+        # a function to be used in PDA and IMM-PDA
+        dz = z - z_hat
+        gated = dz.T @ np.solve(S, dz) < gate_size_square
+        return gated
+
+    @classmethod
     def estimate(cls, ekfstate: GaussParams):
         """Get the estimate from the state with its covariance. (Compatibility method)"""
         return ekfstate

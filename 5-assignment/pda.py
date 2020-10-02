@@ -20,7 +20,8 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
 
     def predict(self, filter_state: ET, Ts: float) -> ET:
         """Predict state estimate Ts time units ahead"""
-        return  # TODO
+        prediction = self.state_filter.predict(filter_state, Ts)
+        return prediction
 
     def gate(
         self,
@@ -29,15 +30,18 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         filter_state: ET,
         *,
         sensor_state: Optional[Dict[str, Any]] = None,
-    ) -> bool:  # gated (m x 1): gated(j) = true if measurement j is within gate
+    ) -> bool: # gated (m x 1): gated(j) = true if measurement j is within gate
         """Gate/validate measurements: (z-h(x))'S^(-1)(z-h(x)) <= g^2."""
 
         M = Z.shape[0]
         g_squared = self.gate_size ** 2
 
-
-        # The loop can be done using ether of these: normal loop, list comprehension or map
-        gated =  # TODO: some for loop over elements of Z using self.state_filter.gate
+        # The loop can be done using ether of these: normal loop, list
+        # comprehension or map
+        gated = np.array([
+            self.state_filter.gate(z.reshape((-1,1)), filter_state,
+                gate_size_square=self.gate_size,
+                sensor_state=sensor_state).reshape((-1,1)) for z in Z])
 
         return gated
 
@@ -58,8 +62,11 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         ll = np.empty(Z.shape[0] + 1)
 
         # calculate log likelihood ratios
-        ll[0] =  # TODO: missed detection
-        ll[1:] = # TODO: some for loop over elements of Z using self.state_filter.loglikelihood
+        # Corollary 7.3.3
+        ll[0] = log_clutter + log_PND
+        ll[1:] = np.array([
+            log_PD + self.state_filter.loglikelihood(z, filter_state,
+                 sensor_state) for z in Z])
 
         return ll
 
@@ -70,14 +77,16 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         filter_state: ET,
         *,
         sensor_state: Optional[Dict[str, Any]] = None,
-    ) -> np.ndarray:  # beta, shape=(M + 1,): the association probabilities (normalized likelihood ratios)
+    ) -> np.ndarray:  # beta, shape=(M + 1,): the association probabilities
+                      # (normalized likelihood ratios)
         """calculate the poseterior event/association probabilities."""
 
         # log likelihoods
-        lls = self.loglikelihood_ratios(Z, filter_state, sensor_state=sensor_state)
+        lls = self.loglikelihood_ratios(Z, filter_state,
+                                        sensor_state=sensor_state)
 
         # probabilities
-        beta = # TODO
+        beta = np.exp(lls)
         return beta
 
     def conditional_update(
@@ -87,17 +96,20 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         filter_state: ET,
         *,
         sensor_state: Optional[Dict[str, Any]] = None,
-    ) -> List[
-        ET
-    ]:  # Updated filter_state for all association events, first element is no detection
+    ) -> List[ET]:  # Updated filter_state for all association events, first
+                    # element is no detection
         """Update the state with all possible measurement associations."""
 
+        # using eqs. (7.20) and (7.21)
         conditional_update = []
         conditional_update.append(
-            # TODO: missed detection
+            # missed detection, i.e. a_k = 0
+
         )
         conditional_update.extend(
             # TODO: some loop over Z making a list of updates
+            # detection a_k > 0
+
         )
 
         return conditional_update
