@@ -2,7 +2,7 @@ from typing import TypeVar, Optional, Dict, Any, List, Generic
 from dataclasses import dataclass, field
 import numpy as np
 import scipy
-import scipy.special
+from scipy.special import logsumexp
 
 from estimatorduck import StateEstimator
 from mixturedata import MixtureParameters
@@ -27,11 +27,13 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         self,
         # measurements of shape=(M, m)=(#measurements, dim)
         Z: np.ndarray,
+        # the filter state that should gate the measurements
         filter_state: ET,
         *,
         sensor_state: Optional[Dict[str, Any]] = None,
-    ) -> bool: # gated (m x 1): gated(j) = true if measurement j is within gate
-        """Gate/validate measurements: (z-h(x))'S^(-1)(z-h(x)) <= g^2."""
+    ) -> np.ndarray:  # gated: shape=(M,), dtype=bool
+                      # (gated(j) = true if measurement j is within gate)
+        """Gate/validate measurements: akin to (z-h(x))'S^(-1)(z-h(x)) <= g^2."""
 
         M = Z.shape[0]
         g_squared = self.gate_size ** 2
@@ -39,9 +41,11 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         # The loop can be done using ether of these: normal loop, list
         # comprehension or map
         gated = np.array([
-            self.state_filter.gate(z.reshape((-1,1)), filter_state,
+            self.state_filter.gate(z, filter_state,
                 gate_size_square=g_squared,
-                sensor_state=sensor_state).reshape((-1,1)) for z in Z])
+                sensor_state=sensor_state) for z in Z])
+
+        gated = gated.reshape(M)
 
         return gated
 
@@ -85,8 +89,12 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         lls = self.loglikelihood_ratios(Z, filter_state,
                                         sensor_state=sensor_state)
 
-        # probabilities
-        beta = np.exp(lls)
+        # # probabilities
+        # beta = np.exp(lls)
+
+        # # normalize since corollary 7.3.3 is only valid up to proportionality
+        # beta = beta / np.sum(beta)
+        beta = np.exp(lls - logsumexp(lls)) # last term is for normalization
         return beta
 
     def conditional_update(
@@ -180,7 +188,7 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
     def init_filter_state(
         self,
         # need to have the type required by the specified state_filter
-        init_state: "ET_like",
+        init_state: ET,
     ) -> ET:
         """Initialize a filter state to proper form."""
         return self.state_filter.init_filter_state(init_state)
