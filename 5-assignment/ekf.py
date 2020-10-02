@@ -201,11 +201,9 @@ class EKF:
         """Check if z is inside sqrt(gate_sized_squared)-sigma ellipse of
         ekfstate in sensor_state """
 
-        z_hat, S = ekfstate
-
         # a function to be used in PDA and IMM-PDA
-        dz = z - z_hat
-        gated = dz.T @ np.solve(S, dz) < gate_size_square
+        nis = self.NIS(z, eksfstate, sensor_state=sensor_state)
+        gated = nis < gate_size_square
         return gated
 
     @classmethod
