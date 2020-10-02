@@ -104,12 +104,12 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         conditional_update = []
         conditional_update.append(
             # missed detection, i.e. a_k = 0
-
+            filter_state  # filter state is predicted state and cov
         )
         conditional_update.extend(
-            # TODO: some loop over Z making a list of updates
             # detection a_k > 0
-
+            [self.state_filter.update(z, filter_state,
+                  sensor_state=sensor_state) for z in Z]
         )
 
         return conditional_update
@@ -118,8 +118,7 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         self, mixture_filter_state: MixtureParameters[ET]
     ) -> ET:  # the two first moments of the mixture
         """Reduce a Gaussian mixture to a single Gaussian."""
-        return  # TODO: utilize self.state_filter to keep this working for both EKF and IMM
-
+        return self.state_filter.reduce_mixture(mixture_filter_state)
 
     def update(
         self,
@@ -132,17 +131,20 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         """
         Perform the PDA update cycle.
 
-        Gate -> association probabilities -> conditional update -> reduce mixture.
+        Gate -> association probabilities -> conditional update
+        -> reduce mixture.
         """
         # remove the not gated measurements from consideration
-        gated = # TODO
+        gated = self.gate(Z, filter_state, sensor_state=sensor_state)
         Zg = Z[gated]
 
         # find association probabilities
-        beta = # TODO
+        beta = self.association_probabilities(Z, filter_state,
+                                              sensor_state=sensor_state)
 
         # find the mixture components
-        filter_state_updated_mixture_components =  # TODO
+        filter_state_updated_mixture_components = \
+            self.conditional_update(Z, filter_state, sensor_state=sensor_state)
 
         # make mixture
         filter_state_update_mixture = MixtureParameters(
@@ -150,7 +152,8 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         )
 
         # reduce mixture
-        filter_state_updated_reduced =  # TODO
+        filter_state_updated_reduced = \
+            self.reduce_mixture(filter_state_update_mixture)
 
         return filter_state_updated_reduced
 
@@ -165,13 +168,14 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
     ) -> ET:
         """Perform a predict update cycle with Ts time units and measurements Z in sensor_state"""
 
-        filter_state_predicted = # TODO
-        filter_state_updated = # TODO
+        filter_state_predicted = self.predict(filter_state, Ts)
+        filter_state_updated = self.update(Z, filter_state_predicted,
+                                           sensor_state=sensor_state)
         return filter_state_updated
 
     def estimate(self, filter_state: ET) -> GaussParams:
         """Get an estimate with its covariance from the filter state."""
-        return # TODO: remember to use self.state_filter to keep it working for both EKF and IMM
+        return self.state_filter.estimate(filter_state)
 
     def init_filter_state(
         self,
