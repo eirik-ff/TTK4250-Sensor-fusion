@@ -100,6 +100,7 @@ play_movie = False
 
 if play_movie:
     fig2, ax2 = plt.subplots(num=2, clear=True)
+    ax2.plot(*Xgt.T[:2], color="C1", linewidth=1.5)
     sh = ax2.scatter(np.nan, np.nan)
     th = ax2.set_title(f"measurements at step 0")
     ax2.axis([0, 700, -100, 300])
@@ -113,12 +114,12 @@ if play_movie:
         plt.pause(plotpause)
 
 # %% run pdaf
-sigma_a = 6.5
-sigma_z = 10
+sigma_a = 4.5
+sigma_z = 4
 
 PD = 0.8  # TODO
 clutter_intensity = 1e-3  # TODO
-gate_size = 5^2  # TODO
+gate_size = 3  # TODO
 
 dynamic_model = dynamicmodels.WhitenoiseAccelleration(sigma_a)
 measurement_model = measurementmodels.CartesianPosition(sigma_z)
@@ -133,10 +134,11 @@ NEESvel = np.zeros(K)
 
 # initialize
 x_bar_init = np.array([*Z[0][true_association[0] - 1], 0, 0])
+x_bar_init = np.array([30, -70, 0, 0])
 
 P_bar_init = np.zeros((4, 4))
 P_bar_init[[0, 1], [0, 1]] = 2 * sigma_z ** 2
-P_bar_init[[2, 3], [2, 3]] = 20 ** 2
+P_bar_init[[2, 3], [2, 3]] = 10 ** 2
 
 init_state = tracker.init_filter_state({"mean": x_bar_init, "cov": P_bar_init})
 
@@ -171,40 +173,47 @@ ANEESpos = np.mean(NEESpos)
 ANEESvel = np.mean(NEESvel)
 print(f"ANEES = {ANEES:.3f}, ANEESpos = {ANEESpos:.3f}, ANEESvel = {ANEESvel:.3f}")
 
-# %% plots
+
 fig3, ax3 = plt.subplots(num=3, clear=True)
-ax3.plot(*x_hat.T[:2], label=r"$\hat x$")
-ax3.plot(*Xgt.T[:2], label="$x$")
+ax3.plot(*Xgt.T[:2], color='k', label="$x$")
+ax3.plot(*x_hat.T[:2], color='g', label=r"$\hat x$")
 ax3.set_title(
     rf"$\sigma_a = {sigma_a:.3f}$, $\sigma_z = {sigma_z:.3f}$"
     "\n"
+    rf"$P_D = {PD}$, $\lambda = {clutter_intensity}$, $g = {gate_size}$"
+    "\n"
     rf"posRMSE = {posRMSE:.2f}, velRMSE = {velRMSE:.2f}"
 )
+ax3.legend()
 
 # %%
-# fig4, axs4 = plt.subplots(3, sharex=True, num=4, clear=True)
+fig4, axs4 = plt.subplots(3, sharex=True, num=4, clear=True)
+fig4.tight_layout(h_pad=2)
 
-# confprob = # TODO: probability for confidence interval
-# CI2 = # TODO: confidence interval for NEESpos and NEESvel
-# CI4 = # TODO: confidence interval for NEES
+confprob = 0.9  # probability for confidence interval
+# TODO: confidence interval for NEESpos and NEESvel
+CI2 = np.asarray(scipy.stats.chi2.interval(confprob, 2))
+# TODO: confidence interval for NEES
+CI4 = np.asarray(scipy.stats.chi2.interval(confprob, 4))
+print(f"CI2 = {CI2}     CI4 = {CI4}")
 
-# axs4[0].plot(np.arange(K) * Ts, NEESpos)
-# axs4[0].plot([0, (K - 1) * Ts], np.repeat(CI2[None], 2, 0), "--r")
-# axs4[0].set_ylabel("NEES pos")
-# inCIpos = np.mean((CI2[0] <= NEESpos) * (NEESpos <= CI2[1]))
-# axs4[0].set_title(f"{inCIpos*100:.1f}% inside {confprob*100:.1f}% CI")
+axs4[0].plot(np.arange(K) * Ts, NEESpos)
+axs4[0].plot([0, (K - 1) * Ts], np.repeat(CI2[None], 2, 0), "--r")
+axs4[0].set_ylabel("NEES pos")
+inCIpos = np.mean((CI2[0] <= NEESpos) * (NEESpos <= CI2[1]))
+axs4[0].set_title(f"{inCIpos*100:.1f}% inside {confprob*100:.1f}% CI")
 
-# axs4[1].plot(np.arange(K) * Ts, NEESvel)
-# axs4[1].plot([0, (K - 1) * Ts], np.repeat(CI2[None], 2, 0), "--r")
-# axs4[1].set_ylabel("NEES vel")
-# inCIvel = np.mean((CI2[0] <= NEESvel) * (NEESvel <= CI2[1]))
-# axs4[1].set_title(f"{inCIvel*100:.1f}% inside {confprob*100:.1f}% CI")
+axs4[1].plot(np.arange(K) * Ts, NEESvel)
+axs4[1].plot([0, (K - 1) * Ts], np.repeat(CI2[None], 2, 0), "--r")
+axs4[1].set_ylabel("NEES vel")
+inCIvel = np.mean((CI2[0] <= NEESvel) * (NEESvel <= CI2[1]))
+axs4[1].set_title(f"{inCIvel*100:.1f}% inside {confprob*100:.1f}% CI")
 
-# axs4[2].plot(np.arange(K) * Ts, NEESpos)
-# axs4[2].plot([0, (K - 1) * Ts], np.repeat(CI4[None], 2, 0), "--r")
-# axs4[2].set_ylabel("NEES")
-# inCI = np.mean((CI2[0] <= NEES) * (NEES <= CI2[1]))
-# axs4[2].set_title(f"{inCI*100:.1f}% inside {confprob*100:.1f}% CI")
+axs4[2].plot(np.arange(K) * Ts, NEESpos)
+axs4[2].plot([0, (K - 1) * Ts], np.repeat(CI4[None], 2, 0), "--r")
+axs4[2].set_ylabel("NEES")
+inCI = np.mean((CI2[0] <= NEES) * (NEES <= CI2[1]))
+axs4[2].set_title(f"{inCI*100:.1f}% inside {confprob*100:.1f}% CI")
 
 # confprob = # TODO
 # CI2K = # TODO: ANEESpos and ANEESvel
