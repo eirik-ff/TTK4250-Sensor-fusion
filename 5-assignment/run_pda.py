@@ -114,12 +114,13 @@ if play_movie:
         plt.pause(plotpause)
 
 # %% run pdaf
-sigma_a = 4.5
-sigma_z = 4
+sigma_a = 4.2
+sigma_z = 2.8
 
-PD = 0.8  # TODO
-clutter_intensity = 1e-3  # TODO
-gate_size = 3  # TODO
+# tune these parameters
+PD = 0.9
+clutter_intensity = 1e-3
+gate_size = 3
 
 dynamic_model = dynamicmodels.WhitenoiseAccelleration(sigma_a)
 measurement_model = measurementmodels.CartesianPosition(sigma_z)
@@ -138,7 +139,7 @@ x_bar_init = np.array([30, -70, 0, 0])
 
 P_bar_init = np.zeros((4, 4))
 P_bar_init[[0, 1], [0, 1]] = 2 * sigma_z ** 2
-P_bar_init[[2, 3], [2, 3]] = 10 ** 2
+P_bar_init[[2, 3], [2, 3]] = 20 ** 2
 
 init_state = tracker.init_filter_state({"mean": x_bar_init, "cov": P_bar_init})
 
@@ -171,7 +172,7 @@ print(f"posRMSE = {posRMSE:.2f}, velRMSE = {velRMSE:.2f}")
 ANEES = np.mean(NEES)
 ANEESpos = np.mean(NEESpos)
 ANEESvel = np.mean(NEESvel)
-print(f"ANEES = {ANEES:.3f}, ANEESpos = {ANEESpos:.3f}, ANEESvel = {ANEESvel:.3f}")
+#print(f"ANEES = {ANEES:.3f}, ANEESpos = {ANEESpos:.3f}, ANEESvel = {ANEESvel:.3f}")
 
 
 fig3, ax3 = plt.subplots(num=3, clear=True)
@@ -195,7 +196,7 @@ confprob = 0.9  # probability for confidence interval
 CI2 = np.asarray(scipy.stats.chi2.interval(confprob, 2))
 # TODO: confidence interval for NEES
 CI4 = np.asarray(scipy.stats.chi2.interval(confprob, 4))
-print(f"CI2 = {CI2}     CI4 = {CI4}")
+#print(f"CI2 = {CI2}     CI4 = {CI4}")
 
 axs4[0].plot(np.arange(K) * Ts, NEESpos)
 axs4[0].plot([0, (K - 1) * Ts], np.repeat(CI2[None], 2, 0), "--r")
@@ -215,20 +216,21 @@ axs4[2].set_ylabel("NEES")
 inCI = np.mean((CI2[0] <= NEES) * (NEES <= CI2[1]))
 axs4[2].set_title(f"{inCI*100:.1f}% inside {confprob*100:.1f}% CI")
 
-# confprob = # TODO
-# CI2K = # TODO: ANEESpos and ANEESvel
-# CI4K = # TODO: NEES
-# ANEESpos = # TODO
-# ANEESvel = # TODO
-# ANEES = # TODO
-# print(f"ANEESpos = {ANEESpos:.2f} with CI = [{CI2K[0]:.2f}, {CI2K[1]:.2f}]")
-# print(f"ANEESvel = {ANEESvel:.2f} with CI = [{CI2K[0]:.2f}, {CI2K[1]:.2f}]")
-# print(f"ANEES = {ANEES:.2f} with CI = [{CI4K[0]:.2f}, {CI4K[1]:.2f}]")
+confprob = 0.9
+# TODO: ANEESpos and ANEESvel
+CI2K = np.asarray(scipy.stats.chi2.interval(confprob, 2*K)) / K
+# TODO: ANEES
+CI4K = np.asarray(scipy.stats.chi2.interval(confprob, 4*K)) / K
 
-# fig5, axs5 = plt.subplots(2, num=5, clear=True)
-# axs5[0].plot(np.arange(K) * Ts, np.linalg.norm(x_hat[:, :2] - Xgt[:, :2], axis=1))
-# axs5[0].set_ylabel("position error")
+print(f"ANEESpos = {ANEESpos:.2f} with CI = [{CI2K[0]:.2f}, {CI2K[1]:.2f}]")
+print(f"ANEESvel = {ANEESvel:.2f} with CI = [{CI2K[0]:.2f}, {CI2K[1]:.2f}]")
+print(f"ANEES = {ANEES:.2f} with CI = [{CI4K[0]:.2f}, {CI4K[1]:.2f}]")
 
-# axs5[1].plot(np.arange(K) * Ts, np.linalg.norm(x_hat[:, 2:4] - Xgt[:, 2:4], axis=1))
-# axs5[1].set_ylabel("velocity error")
+fig5, axs5 = plt.subplots(2, num=5, clear=True)
+axs5[0].plot(np.arange(K) * Ts, np.linalg.norm(x_hat[:, :2] - Xgt[:, :2], axis=1))
+axs5[0].set_ylabel("position error")
+
+axs5[1].plot(np.arange(K) * Ts, np.linalg.norm(x_hat[:, 2:4] - Xgt[:, 2:4], axis=1))
+axs5[1].set_ylabel("velocity error")
+axs5[1].set_xlabel("time step k")
 # %%
