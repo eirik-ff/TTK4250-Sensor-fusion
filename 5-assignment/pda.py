@@ -33,7 +33,8 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         sensor_state: Optional[Dict[str, Any]] = None,
     ) -> np.ndarray:  # gated: shape=(M,), dtype=bool
                       # (gated(j) = true if measurement j is within gate)
-        """Gate/validate measurements: akin to (z-h(x))'S^(-1)(z-h(x)) <= g^2."""
+        """Gate/validate measurements: akin to
+            (z-h(x))'S^(-1)(z-h(x)) <= g^2."""
 
         M = Z.shape[0]
         g_squared = self.gate_size ** 2
@@ -89,12 +90,11 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         lls = self.loglikelihood_ratios(Z, filter_state,
                                         sensor_state=sensor_state)
 
-        # # probabilities
-        # beta = np.exp(lls)
+        # probabilities
+        beta = np.exp(lls)
 
-        # # normalize since corollary 7.3.3 is only valid up to proportionality
-        # beta = beta / np.sum(beta)
-        beta = np.exp(lls - logsumexp(lls)) # last term is for normalization
+        # normalize since corollary 7.3.3 is only valid up to proportionality
+        beta = beta / np.sum(beta)
         return beta
 
     def conditional_update(
@@ -152,7 +152,8 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
 
         # find the mixture components
         filter_state_updated_mixture_components = \
-            self.conditional_update(Zg, filter_state, sensor_state=sensor_state)
+            self.conditional_update(Zg, filter_state,
+                                    sensor_state=sensor_state)
 
         # make mixture
         filter_state_update_mixture = MixtureParameters(
@@ -174,7 +175,8 @@ class PDA(Generic[ET]):  # Probabilistic Data Association
         *,
         sensor_state: Optional[Dict[str, Any]] = None,
     ) -> ET:
-        """Perform a predict update cycle with Ts time units and measurements Z in sensor_state"""
+        """Perform a predict update cycle with Ts time units and measurements
+        Z in sensor_state"""
 
         filter_state_predicted = self.predict(filter_state, Ts)
         filter_state_updated = self.update(Z, filter_state_predicted,
